@@ -18,6 +18,8 @@ import Approvals from "./pages/manager/Approvals";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import LeavePolicies from "./pages/admin/LeavePolicies";
+import TrackLeaves from "./pages/employee/TrackLeave";
 
 function App() {
   return (
@@ -47,6 +49,28 @@ function App() {
               <ProtectedRoute roles={["Employee", "Manager", "Admin"]}>
                 <Layout>
                   <Profile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leave-policies"
+            element={
+              <ProtectedRoute roles={["Admin"]}>
+                <Layout>
+                  <LeavePolicies />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/track-leaves"
+            element={
+              <ProtectedRoute roles={["Employee"]}>
+                <Layout>
+                  <TrackLeaves />
                 </Layout>
               </ProtectedRoute>
             }

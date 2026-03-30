@@ -1,4 +1,6 @@
 import express from "express";
+import Leave from "../models/Leave.js"; // ✅ important
+
 import {
   applyLeave,
   getMyLeaves,
@@ -16,17 +18,32 @@ const router = express.Router();
 
 /* ================= EMPLOYEE ================= */
 
-// Apply leave → only Employee
 router.post("/", protect, authorize(["Employee"]), applyLeave);
 
-// My data → Employee + Admin (Admin can inspect users)
 router.get(
   "/my",
   protect,
   authorize(["Employee", "Admin", "Manager"]),
   getMyLeaves
 );
+
 router.get("/my/stats", protect, authorize(["Employee", "Admin"]), getMyStats);
+
+// ✅ FIXED STATS ROUTE
+router.get("/stats/all", protect, authorize(["Admin"]), async (req, res) => {
+  try {
+    const total = await Leave.countDocuments();
+    const approved = await Leave.countDocuments({ status: "Approved" });
+    const pending = await Leave.countDocuments({ status: "Pending" });
+    const rejected = await Leave.countDocuments({ status: "Rejected" });
+
+    res.json({ total, approved, pending, rejected });
+  } catch (err) {
+    console.error(err); // 👈 important for debugging
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.get(
   "/my/calendar",
   protect,
@@ -36,15 +53,12 @@ router.get(
 
 /* ================= MANAGER ================= */
 
-// Approve / Reject → only Manager
 router.put("/:id/decision", protect, authorize(["Manager"]), decideLeave);
 
-// Team leaves → Manager + Admin
 router.get("/team", protect, authorize(["Manager", "Admin"]), getTeamLeaves);
 
 /* ================= ADMIN ================= */
 
-// All leaves → only Admin
-router.get("/all", protect, authorize(["Admin"]), getAllLeaves);
+router.get("/all", protect, authorize(["Admin", "Manager"]), getAllLeaves);
 
 export default router;

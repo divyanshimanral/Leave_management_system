@@ -10,23 +10,54 @@ import { Button } from "@/components/ui/button";
 export default function ApplyLeave() {
   const navigate = useNavigate();
 
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    startDate: "",
+    endDate: "",
+    reason: "",
+    leaveType: "",
+  });
 
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // 📅 Today date (for validation)
+  const today = new Date().toISOString().split("T")[0];
+
+  // ✅ Handle input change
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   // ✅ Validation
   const validate = () => {
     const newErrors = {};
 
-    if (!startDate) newErrors.startDate = "Start date is required";
-    if (!endDate) newErrors.endDate = "End date is required";
-    if (!reason.trim()) newErrors.reason = "Reason is required";
+    if (!form.startDate) newErrors.startDate = "Start date is required";
+    if (!form.endDate) newErrors.endDate = "End date is required";
+    if (!form.reason.trim()) newErrors.reason = "Reason is required";
+    if (!form.leaveType) newErrors.leaveType = "Leave type is required";
 
-    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+    // 🚫 Past date restriction
+    if (form.startDate && form.startDate < today) {
+      newErrors.startDate = "Start date cannot be in the past";
+    }
+
+    // 🚫 End < Start
+    if (
+      form.startDate &&
+      form.endDate &&
+      new Date(form.endDate) < new Date(form.startDate)
+    ) {
       newErrors.endDate = "End date cannot be before start date";
+    }
+
+    // 🚫 Max duration (optional but impressive)
+    const diff =
+      (new Date(form.endDate) - new Date(form.startDate)) /
+      (1000 * 60 * 60 * 24);
+
+    if (diff > 10) {
+      newErrors.endDate = "Leave cannot exceed 10 days";
     }
 
     return newErrors;
@@ -46,23 +77,19 @@ export default function ApplyLeave() {
     setLoading(true);
 
     try {
-      // 🔥 FIXED API
-      await API.post("/leave", {
-        startDate,
-        endDate,
-        reason,
-      });
+      await API.post("/leave", form);
 
       toast.success("Leave applied successfully ✅");
 
-      // Reset form
-      setStartDate("");
-      setEndDate("");
-      setReason("");
+      setForm({
+        startDate: "",
+        endDate: "",
+        reason: "",
+        leaveType: "",
+      });
 
-      // 🔥 Redirect to leaves page
       setTimeout(() => {
-        navigate("/leaves");
+        navigate("/track-leaves");
       }, 800);
     } catch (err) {
       toast.error(err.response?.data?.message || "Error applying leave ❌");
@@ -74,75 +101,84 @@ export default function ApplyLeave() {
   return (
     <div className="h-full flex items-start justify-center">
       <div className="w-full max-w-lg">
+        {/* 🔝 Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">Apply Leave</h1>
+          <h1 className="text-2xl font-semibold">Apply Leave</h1>
           <p className="text-sm text-muted-foreground">
             Fill in the details to request leave
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <Card className="glass rounded-2xl">
+          <Card className="rounded-2xl shadow">
             <CardContent className="p-6 space-y-6">
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-semibold mb-1 block">
-                    Start Date
-                  </label>
+                  <label className="text-sm font-semibold">Start Date</label>
                   <Input
                     type="date"
-                    className="h-11 rounded-xl glass"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    name="startDate"
+                    min={today}
+                    value={form.startDate}
+                    onChange={handleChange}
                   />
                   {errors.startDate && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.startDate}
-                    </p>
+                    <p className="text-red-500 text-sm">{errors.startDate}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-sm font-semibold mb-1 block">
-                    End Date
-                  </label>
+                  <label className="text-sm font-semibold">End Date</label>
                   <Input
                     type="date"
-                    className="h-11 rounded-xl glass"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    name="endDate"
+                    min={form.startDate || today}
+                    value={form.endDate}
+                    onChange={handleChange}
                   />
                   {errors.endDate && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.endDate}
-                    </p>
+                    <p className="text-red-500 text-sm">{errors.endDate}</p>
                   )}
                 </div>
               </div>
 
+              {/* Leave Type */}
+              <div>
+                <label className="text-sm font-semibold">Leave Type</label>
+                <select
+                  name="leaveType"
+                  value={form.leaveType}
+                  onChange={handleChange}
+                  className="w-full border rounded-xl p-2"
+                >
+                  <option value="">Select Leave Type</option>
+                  <option value="Sick">Sick Leave</option>
+                  <option value="Casual">Casual Leave</option>
+                  <option value="Paid">Paid Leave</option>
+                </select>
+
+                {errors.leaveType && (
+                  <p className="text-red-500 text-sm">{errors.leaveType}</p>
+                )}
+              </div>
+
               {/* Reason */}
               <div>
-                <label className="text-sm font-semibold mb-1 block">
-                  Reason
-                </label>
+                <label className="text-sm font-semibold">Reason</label>
                 <Input
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Enter reason for leave..."
-                  className="h-11 rounded-xl glass"
+                  name="reason"
+                  value={form.reason}
+                  onChange={handleChange}
+                  placeholder="Enter reason..."
                 />
                 {errors.reason && (
-                  <p className="text-sm text-red-500 mt-1">{errors.reason}</p>
+                  <p className="text-red-500 text-sm">{errors.reason}</p>
                 )}
               </div>
 
               {/* Submit */}
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full h-11 rounded-xl text-base"
-              >
+              <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Submitting..." : "Submit Request"}
               </Button>
             </CardContent>

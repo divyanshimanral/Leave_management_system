@@ -90,3 +90,70 @@ export const exportReport = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// 📈 Monthly Trends
+export const getMonthlyTrends = async (req, res) => {
+  const data = await Leave.aggregate([
+    {
+      $group: {
+        _id: { $month: "$startDate" },
+        total: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  res.json(data);
+};
+
+// 🟢 Status Distribution
+export const getStatusStats = async (req, res) => {
+  const data = await Leave.aggregate([
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  res.json(data);
+};
+
+// 👤 User-wise leaves
+export const getUserStats = async (req, res) => {
+  const data = await Leave.aggregate([
+    // Step 1: Group by userId
+    {
+      $group: {
+        _id: "$userId",
+        totalLeaves: { $sum: 1 },
+      },
+    },
+
+    // Step 2: Join with users collection
+    {
+      $lookup: {
+        from: "users", // MUST match collection name
+        localField: "_id",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+
+    // Step 3: Flatten array
+    {
+      $unwind: "$user",
+    },
+
+    // Step 4: Replace ID with name
+    {
+      $project: {
+        name: "$user.name", // ✅ use schema name
+        totalLeaves: 1,
+      },
+    },
+  ]);
+
+  res.json(data);
+};

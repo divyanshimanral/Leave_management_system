@@ -43,6 +43,11 @@ export default function Layout({ children }) {
         path: "/leaves",
         icon: ClipboardList,
       },
+      {
+        label: "Track Leaves",
+        path: "/track-leaves",
+        icon: ClipboardList,
+      },
     ],
 
     Manager: [
@@ -51,8 +56,9 @@ export default function Layout({ children }) {
         path: "/dashboard",
         icon: LayoutDashboard,
       },
+
       {
-        label: "My Leaves",
+        label: "All Employees Leaves",
         path: "/leaves",
         icon: ClipboardList,
       },
@@ -72,6 +78,11 @@ export default function Layout({ children }) {
       {
         label: "All Leaves",
         path: "/leaves",
+        icon: ClipboardList,
+      },
+      {
+        label: "Leave Policies",
+        path: "/leave-policies",
         icon: ClipboardList,
       },
       {

@@ -17,45 +17,72 @@ import { Button } from "@/components/ui/button";
 export default function AllLeaves() {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState(""); // 🔥 new
+  const [filter, setFilter] = useState("");
 
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const isPrivileged = ["Admin", "Manager"].includes(user?.role);
 
   const fetchLeaves = async () => {
     setLoading(true);
     try {
-      const url = filter ? `/leave/my?status=${filter}` : "/leave/my";
+      const baseUrl = isPrivileged ? "/leave/all" : "/leave/my";
+      const url = filter ? `${baseUrl}?status=${filter}` : baseUrl;
 
       const res = await API.get(url);
       setLeaves(res.data);
     } catch (err) {
-      toast.error("Failed to fetch leaves", err);
+      console.error(err);
+      toast.error("Failed to fetch leaves");
     } finally {
       setLoading(false);
     }
   };
 
+  // 🔥 Approve / Reject (Manager only)
+  const handleDecision = async (id, decision) => {
+    try {
+      await API.put(`/leave/${id}/decision`, { status: decision });
+      toast.success(`Leave ${decision}`);
+      fetchLeaves();
+    } catch (err) {
+      toast.error("Action failed");
+    }
+  };
+
   useEffect(() => {
     fetchLeaves();
-  }, [filter]); // 🔥 refetch on filter change
+  }, [filter]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold">All Leaves</h1>
+          <h1 className="text-2xl font-semibold">
+            {user?.role === "Admin"
+              ? "All Leaves"
+              : user?.role === "Manager"
+              ? "Team Leaves"
+              : "My Leaves"}
+          </h1>
+
           <p className="text-sm text-muted-foreground">
-            View all your leave requests
+            {isPrivileged
+              ? "Manage employee leave requests"
+              : "View your leave requests"}
           </p>
         </div>
 
-        <Button onClick={() => navigate("/apply")}>Apply Leave</Button>
+        {!isPrivileged && (
+          <Button onClick={() => navigate("/apply")}>Apply Leave</Button>
+        )}
       </div>
 
-      {/* 🔥 Filters */}
+      {/* Filters */}
       <div className="flex gap-2">
-        {["", "pending", "approved", "rejected"].map((f) => (
+        {["", "Pending", "Approved", "Rejected"].map((f) => (
           <Button
             key={f}
             variant={filter === f ? "default" : "outline"}
@@ -67,31 +94,44 @@ export default function AllLeaves() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border glass overflow-hidden">
+      <div className="rounded-2xl border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="font-bold">Start Date</TableHead>
-              <TableHead className="font-bold">End Date</TableHead>
+              {isPrivileged && (
+                <TableHead className="font-bold">Employee</TableHead>
+              )}
+              <TableHead className="font-bold">Start</TableHead>
+              <TableHead className="font-bold">End</TableHead>
               <TableHead className="font-bold">Reason</TableHead>
               <TableHead className="font-bold">Status</TableHead>
+
+              {/* 🔥 Action column only for Manager */}
+              {user?.role === "Manager" && (
+                <TableHead className="font-bold">Actions</TableHead>
+              )}
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4}>Loading...</TableCell>
+                <TableCell colSpan={6}>Loading...</TableCell>
               </TableRow>
             ) : leaves.length === 0 ? (
               <TableRow>
-                <TableCell className="text-center py-6" colSpan={4}>
+                <TableCell colSpan={6} className="text-center py-6">
                   No leaves found
                 </TableCell>
               </TableRow>
             ) : (
               leaves.map((leave) => (
                 <TableRow key={leave._id}>
+                  {/* 👤 Employee Name */}
+                  {isPrivileged && (
+                    <TableCell>{leave.userId?.name || "Unknown"}</TableCell>
+                  )}
+
                   <TableCell>
                     {new Date(leave.startDate).toLocaleDateString()}
                   </TableCell>
@@ -106,15 +146,35 @@ export default function AllLeaves() {
                     <span
                       className={`px-2 py-1 rounded-lg text-xs font-medium ${
                         leave.status === "Approved"
-                          ? "bg-green-500/20 text-green-500"
+                          ? "bg-green-100 text-green-700"
                           : leave.status === "Rejected"
-                          ? "bg-red-500/20 text-red-500"
-                          : "bg-yellow-500/20 text-yellow-500"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-yellow-100 text-yellow-700"
                       }`}
                     >
                       {leave.status}
                     </span>
                   </TableCell>
+
+                  {/* 🔥 Actions for Manager */}
+                  {user?.role === "Manager" && (
+                    <TableCell className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleDecision(leave._id, "Approved")}
+                      >
+                        Approve
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDecision(leave._id, "Rejected")}
+                      >
+                        Reject
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}

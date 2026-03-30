@@ -25,7 +25,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/report", reportRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/users", userRoutes);
 // app.use("/api/admin", adminRoutes);
 
